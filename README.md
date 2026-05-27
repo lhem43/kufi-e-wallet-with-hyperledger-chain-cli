@@ -22,15 +22,6 @@
 - Flutter stable with Dart 3.10+ and Android SDK (for mobile app build).
 - Go 1.21+ (for KufiChain CLI and chain gateway).
 
-## Install The APK (Recommended For Review)
-
-The APK is provided as `kufi_wallet.apk` at repository root when included.
-If the binary is omitted for a source-only release, request the download link from the project owner.
-
-1. Download the APK from the repo root or the provided link.
-2. Install it on Android.
-3. Sign up.
-
 ## Rebuild APK From Source (Optional)
 
 Linux/macOS:
