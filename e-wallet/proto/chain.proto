@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package chain;
+
+service ChainService {
+  rpc AnchorTransfer(AnchorTransferRequest) returns (AnchorTransferResponse);
+  rpc GetReceipt(GetReceiptRequest) returns (AnchorTransferResponse);
+}
+
+message AnchorTransferRequest {
+  string transactionId = 1;
+  string fromUserId = 2;
+  string toUserId = 3;
+  int64 amount = 4;
+  string memo = 5;
+  string internalRef = 6;
+  string settlementRef = 7;
+  string timestamp = 8;
+  string nonce = 9;
+  string idempotencyKey = 10;
+  string riskFlag = 11;
+}
+
+message AnchorTransferResponse {
+  string chainStatus = 1;
+  string txId = 2;
+  int64 blockNumber = 3;
+  string commitmentHash = 4;
+  string receiptJson = 5;
+}
+
+message GetReceiptRequest {
+  string txId = 1;
+}

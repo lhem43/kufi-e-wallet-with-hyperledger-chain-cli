@@ -1,0 +1,48 @@
+{
+  "model_type": "LGBMClassifier",
+  "lightgbm_version": "4.6.0",
+  "features": [
+    "step",
+    "amount",
+    "oldbalanceOrg",
+    "hour_of_day",
+    "day_of_month",
+    "type_encoded",
+    "is_high_risk_type",
+    "amount_log",
+    "nameDest_tx_count",
+    "nameDest_avg_amount",
+    "dest_unique_senders_before",
+    "dest_amount_spike_ratio"
+  ],
+  "target": "isFraud",
+  "best_threshold": 0.891010101010101,
+  "best_score_val": 0.8275229357798165,
+  "best_params": {
+    "max_bin": 479,
+    "n_estimators": 650,
+    "num_leaves": 70,
+    "max_depth": 11,
+    "min_child_samples": 34,
+    "scale_pos_weight": 40.09471164217381,
+    "learning_rate": 0.012343292422339221,
+    "subsample": 0.699597375760872,
+    "colsample_bytree": 0.8496146756823325,
+    "min_split_gain": 0.008621165580829843,
+    "reg_alpha": 0.00031016247281164504,
+    "reg_lambda": 1.558787852344663
+  },
+  "test_metrics": {
+    "roc_auc": 0.9983740777466411,
+    "pr_auc": 0.7735610021630747,
+    "f1": 0.7748296007789679,
+    "precision": 0.7564163498098859,
+    "recall": 0.7941616766467066
+  },
+  "training_time": 646.39,
+  "train_rows": 4453834,
+  "val_rows": 954393,
+  "test_rows": 954393,
+  "random_state": 42,
+  "n_features": 12
+}

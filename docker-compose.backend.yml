@@ -1,0 +1,296 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${WALLET_DB_NAME}
+      POSTGRES_USER: ${WALLET_DB_USER}
+      POSTGRES_PASSWORD: ${WALLET_DB_PASS}
+    ports:
+      - '55432:5432'
+    volumes:
+      - ewallet_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: valkey/valkey:7-alpine
+    ports:
+      - '56379:6379'
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.14
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - '1'
+      - --memory
+      - 1G
+      - --reserve-memory
+      - 0M
+      - --node-id
+      - '0'
+      - --check=false
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:9092
+    ports:
+      - '19092:9092'
+      - '9644:9644'
+    healthcheck:
+      test: ['CMD-SHELL', 'rpk cluster info > /dev/null 2>&1 || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  ato-service:
+    build:
+      context: ./e-wallet/ato-service
+    ports:
+      - '3010:3010'
+    environment:
+      ATO_PORT: '3010'
+      ATO_ACCESS_LOG: 'false'
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+    healthcheck:
+      test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:3010/healthz'', timeout=2).read()"']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  auth-service:
+    image: node:20-bookworm-slim
+    working_dir: /workspace/e-wallet/auth-service
+    command: /bin/bash -lc "if [ ! -d node_modules ]; then npm ci; fi; npm run build && npm run start:prod"
+    volumes:
+      - .:/workspace
+    ports:
+      - '3001:3001'
+    environment:
+      PORT: '3001'
+      GRPC_URL: 0.0.0.0:50051
+      DB_HOST: ${WALLET_DB_HOST}
+      DB_PORT: ${WALLET_DB_PORT}
+      DB_NAME: ${WALLET_DB_NAME}
+      DB_USER: ${WALLET_DB_USER}
+      DB_PASS: ${WALLET_DB_PASS}
+      DB_SYNC: 'true'
+      AUTH_DEV_MODE: 'true'
+      JWT_ISSUER: auth-service
+      JWT_AUDIENCE: e-wallet
+      JWT_ACCESS_TTL_SECONDS: '300'
+      JWT_REFRESH_TTL_SECONDS: '604800'
+      JWT_SECRET: ${JWT_SECRET}
+      FIREBASE_SERVICE_ACCOUNT_PATH: ./keys/firebase-service-account.json
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      FIREBASE_API_KEY: ${FIREBASE_API_KEY}
+      FIREBASE_AUTH_DOMAIN: ${FIREBASE_AUTH_DOMAIN}
+      FIREBASE_STORAGE_BUCKET: ${FIREBASE_STORAGE_BUCKET}
+      FIREBASE_MESSAGING_SENDER_ID: ${FIREBASE_MESSAGING_SENDER_ID}
+      FIREBASE_APP_ID: ${FIREBASE_APP_ID}
+      FIREBASE_CLIENT_EMAIL: ''
+      FIREBASE_PRIVATE_KEY: ''
+      NOTIFICATION_GRPC_URL: notification-service:50055
+      STEP_UP_EMAIL_OTP_TTL_SECONDS: '180'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api-gateway:
+    image: node:20-bookworm-slim
+    working_dir: /workspace/e-wallet/api-gateway
+    command: /bin/bash -lc "if [ ! -d node_modules ]; then npm ci; fi; npm run build && npm run start:prod"
+    volumes:
+      - .:/workspace
+    ports:
+      - '3000:3000'
+    environment:
+      PORT: '3000'
+      AUTH_GRPC_URL: auth-service:50051
+      AUTH_HTTP_URL: http://auth-service:3001
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: auth-service
+      JWT_AUDIENCE: e-wallet
+      TRANSACTION_GRPC_URL: transaction-service:50052
+      NOTIFICATION_GRPC_URL: notification-service:50055
+      GRPC_TIMEOUT_MS: '5000'
+      TRANSFER_TIMEOUT_MS: '15000'
+      RATE_LIMIT_MAX: '100'
+      RATE_LIMIT_REDIS_URL: redis://redis:6379/0
+      RATE_LIMIT_REDIS_PREFIX: 'gw:rl:'
+      RISK_HARD_AMOUNT_THRESHOLD: '50000000'
+      RISK_ANOMALY_MULTIPLE: '3'
+      RISK_MIN_HISTORY_AMOUNT: '5000000'
+    depends_on:
+      auth-service:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  chain-service:
+    image: node:20-bookworm-slim
+    working_dir: /workspace/e-wallet/chain-service
+    command: /bin/bash -lc "if [ ! -d node_modules ] || [ ! -d node_modules/pg ] || [ ! -d node_modules/class-validator ] || [ ! -d node_modules/class-transformer ]; then npm ci; fi; npm run start:dev"
+    volumes:
+      - .:/workspace
+    ports:
+      - '3004:3004'
+    environment:
+      PORT: '3004'
+      GRPC_URL: 0.0.0.0:50054
+      CHAIN_NODE_URL: ${CHAIN_NODE_URL}
+      CHAIN_OBSERVER_URLS: ${CHAIN_OBSERVER_URLS}
+      CHAIN_REQUIRE_TRANSPARENCY_QUORUM: 'true'
+      CHAIN_REQUEST_TIMEOUT_MS: '12000'
+      CHAIN_SKIP_TLS_VERIFY: 'true'
+      RECEIPT_SIGNING_ENABLED: 'true'
+      RECEIPT_SIGNING_KEY_ID: kufi-receipt-ed25519-v1
+      RECEIPT_SIGNING_PRIVATE_KEY_PATH: /workspace/e-wallet/chain-service/keys/receipt-ed25519-private.pem
+      RECEIPT_SIGNING_PUBLIC_KEY_PATH: /workspace/e-wallet/chain-service/keys/receipt-ed25519-public.pem
+      RECEIPT_TSA_ENABLED: 'true'
+      RECEIPT_TSA_URL: https://freetsa.org/tsr
+      RECEIPT_TSA_TIMEOUT_MS: '12000'
+      RECEIPT_TSA_RETRY: '1'
+      RECEIPT_TSA_RETRY_DELAY_MS: '750'
+      RECEIPT_TSA_FAIL_OPEN: 'true'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
+  transaction-service:
+    image: node:20-bookworm-slim
+    working_dir: /workspace/e-wallet/transaction-service
+    command: /bin/bash -lc "if [ ! -d node_modules ] || [ ! -d node_modules/pg ] || [ ! -d node_modules/@grpc/grpc-js ]; then npm ci; fi; npm run start:dev"
+    volumes:
+      - .:/workspace
+    ports:
+      - '3002:3002'
+    environment:
+      PORT: '3002'
+      GRPC_URL: 0.0.0.0:50052
+      DB_HOST: ${WALLET_DB_HOST}
+      DB_PORT: ${WALLET_DB_PORT}
+      DB_NAME: ${WALLET_DB_NAME}
+      DB_USER: ${WALLET_DB_USER}
+      DB_PASS: ${WALLET_DB_PASS}
+      DB_SYNC: 'true'
+      KAFKA_ENABLED: 'true'
+      KAFKA_BROKERS: redpanda:9092
+      OUTSIDE_PAYMENT_GRPC_URL: outside-payment-service:50053
+      CHAIN_GRPC_URL: chain-service:50054
+      CHAIN_RISK_HIGH_AMOUNT: '50000000'
+      OUTSIDE_PAYMENT_TIMEOUT_MS: '5000'
+      CHAIN_ANCHOR_TIMEOUT_MS: '10000'
+      CHAIN_RECEIPT_TIMEOUT_MS: '5000'
+      CHAIN_ASYNC_ENABLED: 'true'
+      CHAIN_ASYNC_POLL_INTERVAL_MS: '1000'
+      CHAIN_ASYNC_BATCH_SIZE: '200'
+      CHAIN_ASYNC_WORKERS: '10'
+      CHAIN_ASYNC_LEASE_MS: '30000'
+      CHAIN_ASYNC_INITIAL_BACKOFF_MS: '1000'
+      CHAIN_ASYNC_MAX_BACKOFF_MS: '300000'
+      CHAIN_ASYNC_MAX_RETRIES: '0'
+      OUTBOX_POLL_INTERVAL_MS: '500'
+      OUTBOX_BATCH_SIZE: '200'
+      OUTBOX_WORKERS: '10'
+      OUTBOX_LEASE_MS: '30000'
+      OUTBOX_MAX_RETRIES: '15'
+      OUTBOX_INITIAL_BACKOFF_MS: '500'
+      OUTBOX_MAX_BACKOFF_MS: '60000'
+      ATO_SERVICE_URL: http://ato-service:3010
+      ATO_TIMEOUT_MS: '250'
+      ATO_FAIL_OPEN: 'false'
+      ATO_TIMEZONE_OFFSET_MINUTES: '420'
+      ATO_STATS_CACHE_TTL_MS: '5000'
+      ATO_STATS_CACHE_MAX_ENTRIES: '10000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      ato-service:
+        condition: service_healthy
+
+  outside-payment-service:
+    image: node:20-bookworm-slim
+    working_dir: /workspace/e-wallet/outside-payment-service
+    command: /bin/bash -lc "if [ ! -d node_modules ] || [ ! -d node_modules/@grpc/grpc-js ]; then npm ci; fi; npm run start:dev"
+    volumes:
+      - .:/workspace
+    ports:
+      - '3003:3003'
+    environment:
+      PORT: '3003'
+      GRPC_URL: 0.0.0.0:50053
+      DB_HOST: ${WALLET_DB_HOST}
+      DB_PORT: ${WALLET_DB_PORT}
+      DB_NAME: ${WALLET_DB_NAME}
+      DB_USER: ${WALLET_DB_USER}
+      DB_PASS: ${WALLET_DB_PASS}
+      DB_SYNC: 'true'
+      EXTERNAL_SETTLE_DELAY_SECONDS: '1'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  notification-service:
+    image: node:20-bookworm-slim
+    working_dir: /workspace/e-wallet/notification-service
+    command: /bin/bash -lc "if [ ! -d node_modules ]; then npm ci; fi; npm run start:dev"
+    volumes:
+      - .:/workspace
+    ports:
+      - '3005:3005'
+    environment:
+      PORT: '3005'
+      GRPC_URL: 0.0.0.0:50055
+      DB_HOST: ${WALLET_DB_HOST}
+      DB_PORT: ${WALLET_DB_PORT}
+      DB_NAME: ${WALLET_DB_NAME}
+      DB_USER: ${WALLET_DB_USER}
+      DB_PASS: ${WALLET_DB_PASS}
+      DB_SYNC: 'true'
+      KAFKA_ENABLED: 'true'
+      KAFKA_BROKERS: redpanda:9092
+      KAFKA_CONSUMER_GROUP: notification-group
+      TRANSACTION_EVENTS_TOPIC: transaction-events
+      AUTH_HTTP_URL: http://auth-service:3001
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: '587'
+      SMTP_SECURE: 'false'
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+
+  settlement-service:
+    image: node:20-bookworm-slim
+    working_dir: /workspace/e-wallet/settlement-service
+    command: /bin/bash -lc "if [ ! -d node_modules ]; then npm ci; fi; npm run start:dev"
+    volumes:
+      - .:/workspace
+    ports:
+      - '3006:3006'
+    environment:
+      PORT: '3006'
+      TRANSACTION_GRPC_URL: transaction-service:50052
+      OUTSIDE_PAYMENT_GRPC_URL: outside-payment-service:50053
+      SETTLEMENT_POLL_CRON: '* * * * * *'
+
+volumes:
+  ewallet_postgres_data:

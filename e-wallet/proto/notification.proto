@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package notification;
+
+service NotificationService {
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
+  rpc GetNotificationSettings(GetNotificationSettingsRequest) returns (NotificationSettingsResponse);
+  rpc UpdateNotificationSettings(UpdateNotificationSettingsRequest) returns (NotificationSettingsResponse);
+  rpc SendEmailOtp(SendEmailOtpRequest) returns (SendEmailOtpResponse);
+}
+
+message ListNotificationsRequest {
+  string userId = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message NotificationItem {
+  string id = 1;
+  string userId = 2;
+  string channel = 3;
+  string title = 4;
+  string content = 5;
+  string payloadJson = 6;
+  string createdAt = 7;
+  string readAt = 8;
+}
+
+message ListNotificationsResponse {
+  repeated NotificationItem items = 1;
+}
+
+message GetNotificationSettingsRequest {
+  string userId = 1;
+}
+
+message UpdateNotificationSettingsRequest {
+  string userId = 1;
+  bool hasEmailEnabled = 2;
+  bool emailEnabled = 3;
+  bool hasSmsEnabled = 4;
+  bool smsEnabled = 5;
+}
+
+message NotificationSettingsResponse {
+  string userId = 1;
+  bool appEnabled = 2;
+  bool emailEnabled = 3;
+  bool smsEnabled = 4;
+  string updatedAt = 5;
+}
+
+message SendEmailOtpRequest {
+  string recipientEmail = 1;
+  string otpCode = 2;
+  int32 expiresInSeconds = 3;
+  string purpose = 4;
+}
+
+message SendEmailOtpResponse {
+  bool sent = 1;
+  string deliveryMode = 2;
+}

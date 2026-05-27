@@ -1,0 +1,30 @@
+HCMUT Academic Research License
+
+Copyright (c) 2026 Ho Chi Minh City University of Technology (HCMUT)
+and the project contributors.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to use,
+copy, modify, and distribute the Software solely for non-commercial academic
+research and educational purposes, subject to the following conditions:
+
+1. The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+2. Any publication or report that uses the Software must cite the academic
+   paper associated with this repository or, at minimum, the repository URL.
+3. The name "HCMUT" and the names of contributors may not be used to endorse
+   or promote products derived from the Software without prior written
+   permission.
+4. Commercial use of the Software is prohibited without prior written
+   permission from HCMUT and the project contributors.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Third-party components included in this repository may be subject to their own
+licenses. You are responsible for complying with those licenses.

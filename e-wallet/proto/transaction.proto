@@ -1,0 +1,228 @@
+syntax = "proto3";
+
+package transaction;
+
+service TransactionService {
+  rpc CreateWallet(CreateWalletRequest) returns (WalletResponse);
+  rpc GetWallet(GetWalletRequest) returns (WalletResponse);
+  rpc CreateFundingSource(CreateFundingSourceRequest) returns (FundingSourceItem);
+  rpc ListFundingSources(ListFundingSourcesRequest) returns (ListFundingSourcesResponse);
+  rpc AssessTransferRisk(AssessTransferRiskRequest) returns (AssessTransferRiskResponse);
+  rpc CreateTransfer(CreateTransferRequest) returns (CreateTransferResponse);
+  rpc CreateTopupIntent(CreateTopupIntentRequest) returns (CreateTransferResponse);
+  rpc CreateWithdrawalRequest(CreateWithdrawalRequest) returns (CreateTransferResponse);
+  rpc GetTransaction(GetTransactionRequest) returns (TransactionItem);
+  rpc ListUserTransactions(ListUserTransactionsRequest) returns (ListUserTransactionsResponse);
+  rpc ListSettlementCandidates(ListSettlementCandidatesRequest) returns (ListSettlementCandidatesResponse);
+  rpc MarkSettlement(MarkSettlementRequest) returns (MarkSettlementResponse);
+  rpc ReconcileWallets(ReconcileWalletsRequest) returns (ReconcileWalletsResponse);
+}
+
+message CreateWalletRequest {
+  string userId = 1;
+  string currency = 2;
+}
+
+message GetWalletRequest {
+  string userId = 1;
+  string currency = 2;
+}
+
+message WalletResponse {
+  string walletId = 1;
+  string userId = 2;
+  string currency = 3;
+  int64 balance = 4;
+  string status = 5;
+  string createdAt = 6;
+  string updatedAt = 7;
+}
+
+message CreateFundingSourceRequest {
+  string userId = 1;
+  string provider = 2;
+  string accountRef = 3;
+  string providerToken = 4;
+  string displayName = 5;
+}
+
+message FundingSourceItem {
+  string fundingSourceId = 1;
+  string userId = 2;
+  string provider = 3;
+  string accountRefMasked = 4;
+  string status = 5;
+  string displayName = 6;
+  string createdAt = 7;
+  string updatedAt = 8;
+}
+
+message ListFundingSourcesRequest {
+  string userId = 1;
+}
+
+message ListFundingSourcesResponse {
+  repeated FundingSourceItem items = 1;
+}
+
+message CreateTransferRequest {
+  string idempotencyKey = 1;
+  string requestingUserId = 2;
+  string fromUserId = 3;
+  string toUserId = 4;
+  int64 amount = 5;
+  string currency = 6;
+  string memo = 7;
+  string otpCode = 8;
+  bool isExternal = 9;
+  string externalPartner = 10;
+  string externalAccountNo = 11;
+}
+
+message AssessTransferRiskRequest {
+  string requestingUserId = 1;
+  string fromUserId = 2;
+  string toUserId = 3;
+  int64 amount = 4;
+  string currency = 5;
+  bool isExternal = 6;
+  string externalPartner = 7;
+  string externalAccountNo = 8;
+  string deviceId = 9;
+}
+
+message AssessTransferRiskResponse {
+  bool requiresStepUp = 1;
+  repeated string reasons = 2;
+  string verdict = 3;
+  double probability = 4;
+  double threshold = 5;
+  string modelVersion = 6;
+  string modelType = 7;
+  int64 senderBalance = 8;
+  int64 destinationTxCount = 9;
+  double destinationAvgAmount = 10;
+  int64 destinationUniqueSenders = 11;
+}
+
+message CreateTopupIntentRequest {
+  string idempotencyKey = 1;
+  string userId = 2;
+  string fundingSourceId = 3;
+  int64 amount = 4;
+  string currency = 5;
+  string memo = 6;
+}
+
+message CreateWithdrawalRequest {
+  string idempotencyKey = 1;
+  string userId = 2;
+  string fundingSourceId = 3;
+  int64 amount = 4;
+  string currency = 5;
+  string memo = 6;
+  bool simulateFailure = 7;
+}
+
+message CreateTransferResponse {
+  string transactionId = 1;
+  string status = 2;
+  string settlementStatus = 3;
+  int64 senderBalance = 4;
+  int64 receiverBalance = 5;
+  string chainStatus = 6;
+  string receiptJson = 7;
+  string createdAt = 8;
+  string errorCode = 9;
+  string errorMessage = 10;
+  string type = 11;
+}
+
+message GetTransactionRequest {
+  string transactionId = 1;
+}
+
+message TransactionItem {
+  string transactionId = 1;
+  string idempotencyKey = 2;
+  string type = 3;
+  string status = 4;
+  string settlementStatus = 5;
+  string fromUserId = 6;
+  string toUserId = 7;
+  int64 amount = 8;
+  string currency = 9;
+  string memo = 10;
+  string chainStatus = 11;
+  string receiptJson = 12;
+  string externalPartner = 13;
+  string externalRef = 14;
+  string createdAt = 15;
+  string updatedAt = 16;
+  string errorCode = 17;
+  string errorMessage = 18;
+}
+
+message ListUserTransactionsRequest {
+  string userId = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+  bool includeFailed = 4;
+}
+
+message ListUserTransactionsResponse {
+  repeated TransactionItem items = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListSettlementCandidatesRequest {
+  int32 limit = 1;
+}
+
+message SettlementCandidate {
+  string transactionId = 1;
+  string type = 2;
+  string status = 3;
+  string settlementStatus = 4;
+  string externalPartner = 5;
+  string externalRef = 6;
+  int64 amount = 7;
+  string currency = 8;
+}
+
+message ListSettlementCandidatesResponse {
+  repeated SettlementCandidate items = 1;
+}
+
+message MarkSettlementRequest {
+  string transactionId = 1;
+  string settlementStatus = 2;
+  string note = 3;
+}
+
+message MarkSettlementResponse {
+  bool success = 1;
+}
+
+message ReconcileWalletsRequest {
+  int32 limit = 1;
+  bool autoFix = 2;
+}
+
+message WalletMismatch {
+  string walletId = 1;
+  string userId = 2;
+  string currency = 3;
+  int64 currentBalance = 4;
+  int64 expectedBalance = 5;
+  int64 openingBalance = 6;
+  int64 ledgerDelta = 7;
+}
+
+message ReconcileWalletsResponse {
+  int32 scanned = 1;
+  int32 mismatches = 2;
+  int32 fixed = 3;
+  repeated WalletMismatch items = 4;
+}

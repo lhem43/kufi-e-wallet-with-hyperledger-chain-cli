@@ -1,0 +1,49 @@
+{
+  "feature_cols": [
+    "hour_of_day",
+    "day_of_week",
+    "is_off_hours",
+    "is_weekend",
+    "amount_diff",
+    "amount_ratio",
+    "log_amount_paid",
+    "log_amount_received",
+    "is_same_bank",
+    "sender_tx_count",
+    "sender_total_volume",
+    "receiver_tx_count",
+    "receiver_total_volume",
+    "sender_sent_to_received_ratio",
+    "sender_unique_receivers",
+    "receiver_unique_senders",
+    "is_reciprocal",
+    "payment_format_enc",
+    "payment_currency_enc",
+    "receiving_currency_enc",
+    "payment_format_fraud_rate",
+    "is_mule_account"
+  ],
+  "target_col": "Is Laundering",
+  "optimal_threshold": 0.000298,
+  "train_cutoff": "2022-09-01 09:44:00",
+  "val_cutoff": "2022-09-02 00:59:00",
+  "fmt_fraud_rate_train": {
+    "ACH": 0.0016073693500967344,
+    "Bitcoin": 0.00011386927806877705,
+    "Cash": 0.00020611201395219787,
+    "Cheque": 0.0001647860459176317,
+    "Credit Card": 0.00013362592461716173,
+    "Reinvestment": 0.0,
+    "Wire": 0.0
+  },
+  "results": {
+    "val_roc_auc": 0.9214,
+    "val_pr_auc": 0.0065,
+    "val_recall": 0.8015,
+    "val_f1": 0.0046,
+    "test_roc_auc": 0.8297,
+    "test_pr_auc": 0.0182,
+    "test_recall": 0.8705,
+    "test_f1": 0.0048
+  }
+}

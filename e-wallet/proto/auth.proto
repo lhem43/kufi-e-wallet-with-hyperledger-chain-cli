@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package auth;
+
+service AuthService {
+  rpc VerifyToken(VerifyTokenRequest) returns (VerifyTokenResponse);
+  rpc VerifyFirebaseToken(VerifyFirebaseTokenRequest) returns (AuthTokensResponse);
+  rpc DevLogin(DevLoginRequest) returns (AuthTokensResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (AuthTokensResponse);
+  rpc ResolveLoginIdentifier(ResolveLoginIdentifierRequest) returns (ResolveLoginIdentifierResponse);
+  rpc Logout(LogoutRequest) returns (EmptyResponse);
+  rpc LogoutAll(LogoutAllRequest) returns (EmptyResponse);
+}
+
+message VerifyTokenRequest {
+  string accessToken = 1;
+}
+
+message VerifyTokenResponse {
+  string userId = 1;
+  string firebaseUid = 2;
+  string kycStatus = 3;
+}
+
+message VerifyFirebaseTokenRequest {
+  string idToken = 1;
+  string userAgent = 2;
+  string ipAddress = 3;
+  string email = 4;
+  string phone = 5;
+  string displayName = 6;
+}
+
+message DevLoginRequest {
+  string firebaseUid = 1;
+  string email = 2;
+  string phone = 3;
+  string displayName = 4;
+  string userAgent = 5;
+  string ipAddress = 6;
+}
+
+message RefreshTokenRequest {
+  string refreshToken = 1;
+  string userAgent = 2;
+  string ipAddress = 3;
+}
+
+message ResolveLoginIdentifierRequest {
+  string identifier = 1;
+}
+
+message ResolveLoginIdentifierResponse {
+  bool found = 1;
+  string email = 2;
+}
+
+message LogoutRequest {
+  string refreshToken = 1;
+}
+
+message LogoutAllRequest {
+  string accessToken = 1;
+}
+
+message AuthTokensResponse {
+  string accessToken = 1;
+  string refreshToken = 2;
+  int64 expiresIn = 3;
+  string userId = 4;
+  AuthUser user = 5;
+}
+
+message AuthUser {
+  string id = 1;
+  string firebaseUid = 2;
+  string email = 3;
+  string phone = 4;
+  string displayName = 5;
+  string kycStatus = 6;
+  bool hasPin = 7;
+}
+
+message EmptyResponse {}

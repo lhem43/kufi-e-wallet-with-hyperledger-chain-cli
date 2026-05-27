@@ -1,0 +1,69 @@
+name: Deploy Monitoring to GCP
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "monitoring_system/**"
+      - "scripts/prod/deploy-monitor.sh"
+      - ".github/workflows/deploy-monitor-gcp.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-monitor-gcp
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, gcp, monitor]
+    steps:
+      - name: Deploy monitoring on runner host
+        shell: bash
+        env:
+          MONITOR_API_BASE_URL: ${{ secrets.MONITOR_API_BASE_URL }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          setup_git_auth() {
+            if [[ -z "${GH_TOKEN:-}" ]]; then
+              return 0
+            fi
+
+            local askpass
+            askpass="$(mktemp)"
+            printf '%s\n' \
+              '#!/usr/bin/env bash' \
+              'case "$1" in' \
+              '  *Username*) printf '\''%s\n'\'' "x-access-token" ;;' \
+              '  *Password*) printf '\''%s\n'\'' "${GH_TOKEN}" ;;' \
+              '  *) exit 1 ;;' \
+              'esac' >"$askpass"
+            chmod 700 "$askpass"
+            export GIT_ASKPASS="$askpass"
+            export GIT_TERMINAL_PROMPT=0
+            trap 'rm -f "$GIT_ASKPASS"' EXIT
+          }
+
+          setup_git_auth
+          REPO_DIR=/srv/kufi/dacn_datn
+          DEPLOY_BRANCH=main
+
+          if [ ! -d "${REPO_DIR}/.git" ]; then
+            sudo mkdir -p "$(dirname "$REPO_DIR")"
+            sudo chown -R "$(id -u)":"$(id -g)" "$(dirname "$REPO_DIR")"
+            git clone https://github.com/lhem43/Chain-based-wallet.git "${REPO_DIR}"
+          fi
+
+          cd "${REPO_DIR}"
+          git fetch origin "${DEPLOY_BRANCH}"
+          git checkout "${DEPLOY_BRANCH}"
+          git reset --hard "origin/${DEPLOY_BRANCH}"
+
+          export REPO_DIR
+          export DEPLOY_BRANCH
+          export PULL_REPO=0
+          bash "${REPO_DIR}/scripts/prod/deploy-monitor.sh"

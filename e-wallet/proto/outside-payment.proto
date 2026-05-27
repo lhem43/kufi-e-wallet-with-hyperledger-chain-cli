@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package outsidepayment;
+
+service OutsidePaymentService {
+  rpc InitiateTransfer(InitiateTransferRequest) returns (InitiateTransferResponse);
+  rpc CheckTransfer(CheckTransferRequest) returns (CheckTransferResponse);
+}
+
+message InitiateTransferRequest {
+  string transactionId = 1;
+  string partnerCode = 2;
+  string accountNo = 3;
+  int64 amount = 4;
+  string currency = 5;
+  string note = 6;
+  string transferType = 7;
+}
+
+message InitiateTransferResponse {
+  string status = 1;
+  string partnerRef = 2;
+  string partnerMessage = 3;
+}
+
+message CheckTransferRequest {
+  string partnerCode = 1;
+  string partnerRef = 2;
+}
+
+message CheckTransferResponse {
+  string status = 1;
+  string partnerMessage = 2;
+}

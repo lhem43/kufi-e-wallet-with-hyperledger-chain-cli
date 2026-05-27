@@ -1,0 +1,154 @@
+name: Deploy Chain to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "chain"
+      - "chain/**"
+      - ".gitmodules"
+      - ".github/workflows/deploy-chain-aws.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+concurrency:
+  group: deploy-aws-chain
+  cancel-in-progress: false
+
+jobs:
+  deploy-orderer:
+    runs-on: [self-hosted, aws, chain, orderer]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Configure git auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          askpass="$RUNNER_TEMP/git-askpass.sh"
+          printf '%s\n' \
+            '#!/usr/bin/env bash' \
+            'case "$1" in' \
+            '  *Username*) printf '\''%s\n'\'' "x-access-token" ;;' \
+            '  *Password*) printf '\''%s\n'\'' "${GH_TOKEN}" ;;' \
+            '  *) exit 1 ;;' \
+            'esac' >"$askpass"
+          chmod 700 "$askpass"
+          {
+            echo "GIT_ASKPASS=$askpass"
+            echo "GIT_TERMINAL_PROMPT=0"
+          } >> "$GITHUB_ENV"
+      - name: Deploy orderer on runner host
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CHAIN_DIR=/srv/kufi/dacn_datn/chain
+          export DEPLOY_BRANCH=main
+          bash ./chain/scripts/deploy-node.sh
+
+  deploy-peer-kufi:
+    runs-on: [self-hosted, aws, chain, peer, peer2]
+    needs: deploy-orderer
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Configure git auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          askpass="$RUNNER_TEMP/git-askpass.sh"
+          printf '%s\n' \
+            '#!/usr/bin/env bash' \
+            'case "$1" in' \
+            '  *Username*) printf '\''%s\n'\'' "x-access-token" ;;' \
+            '  *Password*) printf '\''%s\n'\'' "${GH_TOKEN}" ;;' \
+            '  *) exit 1 ;;' \
+            'esac' >"$askpass"
+          chmod 700 "$askpass"
+          {
+            echo "GIT_ASKPASS=$askpass"
+            echo "GIT_TERMINAL_PROMPT=0"
+          } >> "$GITHUB_ENV"
+      - name: Deploy peer (peer2) on runner host
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CHAIN_DIR=/srv/kufi/dacn_datn/chain
+          export DEPLOY_BRANCH=main
+          bash ./chain/scripts/deploy-node.sh
+
+  deploy-peer-techcombank:
+    runs-on: [self-hosted, aws, chain, peer, peer3]
+    needs: deploy-orderer
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Configure git auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          askpass="$RUNNER_TEMP/git-askpass.sh"
+          printf '%s\n' \
+            '#!/usr/bin/env bash' \
+            'case "$1" in' \
+            '  *Username*) printf '\''%s\n'\'' "x-access-token" ;;' \
+            '  *Password*) printf '\''%s\n'\'' "${GH_TOKEN}" ;;' \
+            '  *) exit 1 ;;' \
+            'esac' >"$askpass"
+          chmod 700 "$askpass"
+          {
+            echo "GIT_ASKPASS=$askpass"
+            echo "GIT_TERMINAL_PROMPT=0"
+          } >> "$GITHUB_ENV"
+      - name: Deploy peer (peer3) on runner host
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CHAIN_DIR=/srv/kufi/dacn_datn/chain
+          export DEPLOY_BRANCH=main
+          bash ./chain/scripts/deploy-node.sh
+
+  deploy-peer-tax:
+    runs-on: [self-hosted, aws, chain, peer, peer1]
+    needs: deploy-orderer
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Configure git auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          askpass="$RUNNER_TEMP/git-askpass.sh"
+          printf '%s\n' \
+            '#!/usr/bin/env bash' \
+            'case "$1" in' \
+            '  *Username*) printf '\''%s\n'\'' "x-access-token" ;;' \
+            '  *Password*) printf '\''%s\n'\'' "${GH_TOKEN}" ;;' \
+            '  *) exit 1 ;;' \
+            'esac' >"$askpass"
+          chmod 700 "$askpass"
+          {
+            echo "GIT_ASKPASS=$askpass"
+            echo "GIT_TERMINAL_PROMPT=0"
+          } >> "$GITHUB_ENV"
+      - name: Deploy peer (peer1) on runner host
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CHAIN_DIR=/srv/kufi/dacn_datn/chain
+          export DEPLOY_BRANCH=main
+          bash ./chain/scripts/deploy-node.sh

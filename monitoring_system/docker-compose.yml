@@ -1,0 +1,69 @@
+services:
+  monitoring-postgres:
+    image: postgres:16-alpine
+    container_name: kufi-monitoring-postgres
+    environment:
+      POSTGRES_DB: ${MONITORING_DB_NAME}
+      POSTGRES_USER: ${MONITORING_DB_USER}
+      POSTGRES_PASSWORD: ${MONITORING_DB_PASS}
+    ports:
+      - '55433:5432'
+    volumes:
+      - monitoring_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${MONITORING_DB_USER} -d ${MONITORING_DB_NAME}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  monitoring-backend:
+    image: node:20-bookworm-slim
+    container_name: kufi-monitoring-backend
+    working_dir: /workspace/monitoring_system/backend
+    command: /bin/bash -lc "if [ ! -d node_modules ]; then npm install; fi; rm -f tsconfig.build.tsbuildinfo tsconfig.tsbuildinfo; npm run start:dev"
+    volumes:
+      - ..:/workspace
+    env_file:
+      - ./backend/.env
+    environment:
+      DB_HOST: monitoring-postgres
+      DB_PORT: ${MONITORING_DB_INTERNAL_PORT:-5432}
+      DB_USER: ${MONITORING_DB_USER}
+      DB_PASS: ${MONITORING_DB_PASS}
+      DB_NAME: ${MONITORING_DB_NAME}
+      WALLET_DB_HOST: ${WALLET_DB_HOST}
+      WALLET_DB_PORT: ${WALLET_DB_PORT}
+      WALLET_DB_USER: ${WALLET_DB_USER}
+      WALLET_DB_PASS: ${WALLET_DB_PASS}
+      WALLET_DB_NAME: ${WALLET_DB_NAME}
+      MONITORED_SERVICE_ENDPOINTS: ${MONITORED_SERVICE_ENDPOINTS}
+      CHAIN_GATEWAY_HEALTH_URL: ${CHAIN_GATEWAY_HEALTH_URL}
+      CHAIN_BOOTSTRAP_MGMT_URL: ${CHAIN_BOOTSTRAP_MGMT_URL}
+    depends_on:
+      monitoring-postgres:
+        condition: service_healthy
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - '4300:4300'
+
+  monitoring-web:
+    image: node:20-bookworm-slim
+    container_name: kufi-monitoring-web
+    working_dir: /workspace/monitoring_system/web
+    command: /bin/bash -lc "if [ ! -d node_modules ]; then npm install; fi; npm run dev -- --host 0.0.0.0 --port 4173"
+    volumes:
+      - ..:/workspace
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+    depends_on:
+      - monitoring-backend
+    ports:
+      - '4173:4173'
+
+volumes:
+  monitoring_postgres_data:
